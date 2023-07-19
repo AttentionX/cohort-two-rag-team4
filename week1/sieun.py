@@ -60,7 +60,8 @@ def classify_intent(query: str) -> SearchIntent:
 
     for intent in SearchIntent:
         if intent.value in chat_completion:
-            print_color(f"Response: {chat_completion}, classified as `{intent.name}`", Colors.GREY)
+            print_color(f"Response: {chat_completion}, classified as ", Colors.GREY, end="")
+            print_color(f"`{intent.name}`", Colors.CYAN)
             return intent
 
     print_color(f"Response: {chat_completion}, could not parse output, using default.", Colors.GREY)
