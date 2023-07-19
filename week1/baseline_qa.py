@@ -81,7 +81,49 @@ while True:
         messages += [{"role": "user", "content": query}]
 
     elif intent == sieun.SearchIntent.WEB_SEARCH:
-        pass
+        def split_text(raw_text, chunk_size):
+            chunks = []
+            start = 0
+            while start < len(raw_text):
+                chunks.append(raw_text[start:start + chunk_size])
+                start += chunk_size
+            return chunks
+        
+        google_query = query ######
+        data = search_for_text(google_query, k=2)
+        sentences = []
+        for (link, text) in data:
+            sentences += split_text(text, 400)
+        index = build_index(sentences)
+        
+        embedding = openai.Embedding.create(input=[query], model='text-embedding-ada-002')['data'][0]['embedding']
+        indices, distances = index.get_nns_by_vector(embedding,
+                                                     n=3,  # return top 3
+                                                     include_distances=True)
+        results = [
+            (sentences[i], d)
+            for i, d in zip(indices, distances)
+        ]
+        print(results)
+        
+        # with this, generate an answer 
+        excerpts = [res[0] for res in results]
+        excerpts = '\n'.join([f'[{i}]. {excerpt}' for i, excerpt in enumerate(excerpts, start=1)])
+        prompt = f"""
+        user query:
+        {query}
+        
+        excerpts: 
+        {excerpts}
+        ---
+        given the excerpts from the paper above, answer the user query.
+        In your answer, make sure to cite the excerpts by its number wherever appropriate.
+        Note, however, that the excerpts may not be relevant to the user query.
+        """
+
+        sieun.print_color(f"\n--- EXCERPTS ---\n{excerpts}", sieun.Colors.GREY)
+        messages += [{"role": "user", "content": query}]
+
     elif intent == sieun.SearchIntent.KEYWORD_SEARCH:
         excerpts = bm25.get_top_n(query.split(" "), sentences, n=5)
         excerpts = '\n'.join([f'[{i}]. {excerpt}' for i, excerpt in enumerate(excerpts, start=1)])
