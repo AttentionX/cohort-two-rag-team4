@@ -2,7 +2,7 @@
 A simple baseline for a question answering system.
 """
 from pathlib import Path
-import yaml
+import json 
 import openai
 from annoy import AnnoyIndex
 import sieun
@@ -16,13 +16,20 @@ dotenv.load_dotenv()
 openai.api_key = os.getenv('API_KEY')
 
 # --- load pre-processed chunks --- #
-with open(Path(__file__).resolve().parent / "openai27052023.yaml", 'r') as f:
-    paper = yaml.safe_load(f)
-sentences = paper['sentences'][:10]
+with open('embeddings.json', 'r') as f:
+    data = json.load(f)
 
-# --- embed chunks and make it as index --- #
-index = build_index(sentences)
+sentences = data['sentences']
+embeddings = data['embeddings']
 
+# --- index embeddings for efficient search (using Spotify's annoy)--- #
+hidden_size = len(embeddings[0])
+index = AnnoyIndex(hidden_size, 'angular')  #  "angular" =  cosine
+for i, e in enumerate(embeddings): 
+    index.add_item(i , e)
+index.build(10)  # build 10 trees for efficient search
+
+# --- BM25 index (todo) 
 messages = [
     {"role": "system", "content": 'You are a helpful assistant.'}
 ]
@@ -55,9 +62,6 @@ while True:
         prompt = f"""
         user query:
         {query}
-        
-        title of the paper:
-        {paper['title']}
         
         excerpts: 
         {excerpts}
