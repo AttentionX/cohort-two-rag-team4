@@ -6,6 +6,7 @@ import json
 import openai
 from annoy import AnnoyIndex
 import sieun
+from rank_bm25 import BM25Okapi
 
 import os
 import dotenv
@@ -30,6 +31,11 @@ for i, e in enumerate(embeddings):
 index.build(10)  # build 10 trees for efficient search
 
 # --- BM25 index (todo) 
+tokenized_corpus = [doc.split(" ") for doc in sentences]
+
+bm25 = BM25Okapi(tokenized_corpus)
+
+
 messages = [
     {"role": "system", "content": 'You are a helpful assistant.'}
 ]
@@ -43,7 +49,7 @@ while True:
     if intent == sieun.SearchIntent.SMALLTALK:
         messages += [{"role": "user", "content": query}]
 
-    elif intent == sieun.SearchIntent.DOC_SEARCH:
+    elif intent == sieun.SearchIntent.COGNITIVE_SEARCH:
         ### filter logic
         embedding = openai.Embedding.create(input=[query], model='text-embedding-ada-002')['data'][0]['embedding']
         if is_meaningless_query(embedding):
@@ -76,9 +82,24 @@ while True:
 
     elif intent == sieun.SearchIntent.WEB_SEARCH:
         pass
-    elif intent == sieun.SearchIntent.PAPER_SEARCH:
-        pass
-    #
+    elif intent == sieun.SearchIntent.KEYWORD_SEARCH:
+        excerpts = bm25.get_top_n(query.split(" "), sentences, n=5)
+        excerpts = '\n'.join([f'[{i}]. {excerpt}' for i, excerpt in enumerate(excerpts, start=1)])
+        prompt = f"""
+        user query:
+        {query}
+        
+        excerpts: 
+        {excerpts}
+        ---
+        given the excerpts from the paper above, answer the user query.
+        In your answer, make sure to cite the excerpts by its number wherever appropriate.
+        Note, however, that the excerpts may not be relevant to the user query.
+        """
+
+        sieun.print_color(f"\n--- EXCERPTS ---\n{excerpts}", sieun.Colors.GREY)
+        messages += [{"role": "user", "content": query}]
+        
     chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo",
                                                    messages=messages)
     answer = chat_completion.choices[0].message.content
