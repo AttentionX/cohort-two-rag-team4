@@ -31,7 +31,17 @@ for i, e in enumerate(embeddings):
 index.build(10)  # build 10 trees for efficient search
 
 # --- BM25 index (todo) 
-tokenized_corpus = [doc.split(" ") for doc in sentences]
+import nltk
+from nltk.stem import PorterStemmer
+porter_stemmer = PorterStemmer()
+# doc = """In linguistic morphology and information retrieval, stemming is the process of reducing inflected (or sometimes derived) words to their word stem, base or root form—generally a written word form. The stem need not be identical to the morphological root of the word; it is usually sufficient that related words map to the same stem, even if this stem is not in itself a valid root."""
+
+def tokenize_doc(doc):
+    tokens = nltk.word_tokenize(doc)
+    stemmed_tokens = [porter_stemmer.stem(token) for token in tokens]
+    return stemmed_tokens
+
+tokenized_corpus = [tokenize_doc(doc) for doc in sentences]
 
 bm25 = BM25Okapi(tokenized_corpus)
 
@@ -72,7 +82,8 @@ while True:
         excerpts: 
         {excerpts}
         ---
-        given the excerpts from the paper above, answer the user query.
+        A GPT-4 model was recently released. 
+        Given the excerpts from the paper above, answer the user query.
         In your answer, make sure to cite the excerpts by its number wherever appropriate.
         Note, however, that the excerpts may not be relevant to the user query.
         """
@@ -125,7 +136,7 @@ while True:
         messages += [{"role": "user", "content": query}]
 
     elif intent == sieun.SearchIntent.KEYWORD_SEARCH:
-        excerpts = bm25.get_top_n(query.split(" "), sentences, n=5)
+        excerpts = bm25.get_top_n(tokenize_doc(query), sentences, n=5)
         excerpts = '\n'.join([f'[{i}]. {excerpt}' for i, excerpt in enumerate(excerpts, start=1)])
         prompt = f"""
         user query:
@@ -134,6 +145,7 @@ while True:
         excerpts: 
         {excerpts}
         ---
+        A GPT-4 model was recently released. 
         given the excerpts from the paper above, answer the user query.
         In your answer, make sure to cite the excerpts by its number wherever appropriate.
         Note, however, that the excerpts may not be relevant to the user query.
