@@ -133,7 +133,7 @@ while True:
         """
 
         sieun.print_color(f"\n--- EXCERPTS ---\n{excerpts}", sieun.Colors.GREY)
-        messages += [{"role": "user", "content": query}]
+        messages += [{"role": "user", "content": prompt}]
 
     elif intent == sieun.SearchIntent.KEYWORD_SEARCH:
         excerpts = bm25.get_top_n(tokenize_doc(query), sentences, n=5)
