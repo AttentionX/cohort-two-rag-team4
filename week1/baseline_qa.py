@@ -31,6 +31,10 @@ for i, e in enumerate(embeddings):
     index.add_item(i , e)
 index.build(10)  # build 10 trees for efficient search
 
+messages = [
+        {"role": "system", "content": 'You are a helpful assistant.'}
+    ]
+
 # --- iteratively answer questions (retrieve & generate) --- #
 while True:
     query = input("Your question: ")
@@ -60,9 +64,13 @@ while True:
     In your answer, make sure to cite the excerpts by its number wherever appropriate.
     Note, however, that the excerpts may not be relevant to the user query.
     """
+    
+    messages += [{"role":"user", "content": query}]
     chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo",
-                                                    messages=[{"role": "user", "content": prompt}])
+                                                    messages=messages)
     answer = chat_completion.choices[0].message.content
+    
+    messages += [{"role":"system", "content":answer}]
     answer += f"\n--- EXCERPTS ---\n{excerpts}"
     print(answer)
 
